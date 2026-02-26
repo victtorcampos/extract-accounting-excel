@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import Optional, List
+
 from datetime import datetime
-from sqlmodel import Relationship, SQLModel, Field
+from typing import Optional
+
+from sqlalchemy.orm import Mapped, relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 # 1. Tabela de Mapeamento (OK)
 class AccountMapping(SQLModel, table=True):
@@ -25,29 +28,24 @@ class Protocolo(SQLModel, table=True):
     arquivo_txt_base64: Optional[str] = None
     arquivo_base64_raw: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
-    # RELACIONAMENTO: Use apenas Relationship (Maiúsculo)
-    # back_populates deve ser exatamente o nome do atributo na outra classe
-    entries: List["StagingEntry"] = Relationship(back_populates="protocolo")
+    entries: Mapped[list["StagingEntry"]] = Relationship(
+        sa_relationship=relationship(back_populates="protocolo")
+    )
 
 # 3. Tabela de Itens Pendentes (Staging)
 
 class StagingEntry(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    
-    # Chave estrangeira ligando ao ID (inteiro) do protocolo
     protocolo_id: int = Field(foreign_key="protocolo.id")
-
     data_lancamento: str
     valor: float
     conta_debito_raw: str
     conta_credito_raw: str
     historico: str
     cod_historico: str = Field(default="")
-
-    # RELACIONAMENTO INVERSO:
-    # O nome do atributo aqui ('protocolo') é o que vai no back_populates da classe acima
-    protocolo: "Protocolo" = Relationship(back_populates="entries")
+    protocolo: Mapped["Protocolo"] = Relationship(
+        sa_relationship=relationship(back_populates="entries")
+    )
 
 # 4. Configuração de Layout (OK)
 class LayoutExcel(SQLModel, table=True):
