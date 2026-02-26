@@ -207,3 +207,5 @@ marimo/_lsp/
 __marimo__/
 *.db
 /backup_
+data/database.db-shm
+data/database.db-wal

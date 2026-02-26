@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from app.database import init_db
-from app.app.api.v1.endpoints import lote # Ajustado para o caminho das pastas atuais
+from app.api.v1.endpoints import lote
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 FRONTEND_PATH = BASE_DIR / "frontend" / "index.html"

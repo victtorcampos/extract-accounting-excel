@@ -160,35 +160,115 @@
         };
 
         // --- LÓGICA PÁGINA 2: PENDÊNCIAS ---
+        async function resolverConta(protocolo_id, cnpj, conta_cliente, conta_contabilidade, tipo) {
+            const res = await fetch(`${API_URL}/pendencias/resolver`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ protocolo_id, cnpj_empresa: cnpj, conta_cliente, conta_contabilidade, tipo })
+            });
+            return await res.json();
+        }
+
         async function loadPendencias() {
             showPage('pagina_2');
             const container = document.getElementById('containerPendencias');
             container.innerHTML = '<div class="text-center py-10">Buscando pendências no banco de dados...</div>';
 
             try {
-                // Aqui chamaremos um endpoint que retorna protocolos com status WAITING_MAPPING
-                // Por enquanto, simularemos a interface baseada na estrutura do StagingEntry
-                const res = await fetch(`${API_URL}/lancamento_lote_contabil`); // Mock: precisa de filtro no back
+                const res = await fetch(`${API_URL}/pendencias`);
                 const data = await res.json();
-                
-                // Exemplo de renderização dinâmica (Precisa implementar GET de pendências no back)
-                container.innerHTML = `
-                    <div class="bg-orange-50 border-l-4 border-orange-400 p-4">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="font-bold text-orange-800">Protocolo: 1712345678</p>
-                                <p class="text-sm">Conta encontrada no Excel: <span class="font-mono bg-white px-1">999.01-A</span></p>
+
+                if (!data.sucesso || !data.pendencias || data.pendencias.length === 0) {
+                    container.innerHTML = '<div class="text-center py-10 text-gray-400 italic">Nenhuma pendência encontrada.</div>';
+                    return;
+                }
+
+                let html = '';
+                for (const prot of data.pendencias) {
+                    // Coleta contas únicas que precisam de mapeamento
+                    const contasDebito = [...new Set(prot.entries.map(e => e.conta_debito_raw))];
+                    const contasCredito = [...new Set(prot.entries.map(e => e.conta_credito_raw))];
+
+                    html += `
+                        <div class="border border-orange-200 rounded-lg p-5 bg-orange-50 mb-4" id="prot_${prot.protocolo_id}">
+                            <div class="mb-3">
+                                <p class="font-bold text-orange-800 text-lg">Protocolo: ${prot.numero_protocolo}</p>
+                                <p class="text-sm text-gray-500">CNPJ: ${prot.cnpj} &mdash; ${prot.entries.length} lançamento(s) pendente(s)</p>
                             </div>
-                            <div class="flex gap-2">
-                                <input type="text" placeholder="Cód. Contabilidade" class="border p-2 rounded text-sm w-40">
-                                <button class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700 transition">Mapear</button>
+                            <div class="space-y-2">
+                    `;
+
+                    for (const conta of contasDebito) {
+                        const inputId = `deb_${prot.protocolo_id}_${conta}`;
+                        html += `
+                            <div class="flex flex-wrap items-center gap-3 bg-white border rounded p-3">
+                                <span class="text-xs font-bold uppercase text-red-600 w-16">Débito</span>
+                                <span class="font-mono bg-gray-100 px-2 py-1 rounded text-sm flex-1">${conta}</span>
+                                <input type="text" id="${inputId}" placeholder="Cód. Contabilidade" class="border p-2 rounded text-sm w-40 focus:ring-2 focus:ring-orange-400 outline-none">
+                                <button onclick="mapearConta(${prot.protocolo_id}, '${prot.cnpj}', '${conta}', '${inputId}', 'DEBITO')"
+                                    class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700 transition font-medium">
+                                    Mapear
+                                </button>
+                                <span id="status_${inputId}" class="text-xs text-gray-400"></span>
                             </div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-400 text-center">Implemente o endpoint GET /pendencias no backend para listar dados reais aqui.</p>
-                `;
+                        `;
+                    }
+
+                    for (const conta of contasCredito) {
+                        const inputId = `cred_${prot.protocolo_id}_${conta}`;
+                        html += `
+                            <div class="flex flex-wrap items-center gap-3 bg-white border rounded p-3">
+                                <span class="text-xs font-bold uppercase text-green-700 w-16">Crédito</span>
+                                <span class="font-mono bg-gray-100 px-2 py-1 rounded text-sm flex-1">${conta}</span>
+                                <input type="text" id="${inputId}" placeholder="Cód. Contabilidade" class="border p-2 rounded text-sm w-40 focus:ring-2 focus:ring-orange-400 outline-none">
+                                <button onclick="mapearConta(${prot.protocolo_id}, '${prot.cnpj}', '${conta}', '${inputId}', 'CREDITO')"
+                                    class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700 transition font-medium">
+                                    Mapear
+                                </button>
+                                <span id="status_${inputId}" class="text-xs text-gray-400"></span>
+                            </div>
+                        `;
+                    }
+
+                    html += `</div></div>`;
+                }
+
+                container.innerHTML = html;
             } catch (err) {
                 container.innerHTML = '<div class="text-red-500 text-center">Erro ao carregar pendências.</div>';
+            }
+        }
+
+        async function mapearConta(protocolo_id, cnpj, conta_cliente, inputId, tipo) {
+            const inputEl = document.getElementById(inputId);
+            const statusEl = document.getElementById('status_' + inputId);
+            const conta_contabilidade = inputEl ? inputEl.value.trim() : '';
+
+            if (!conta_contabilidade) {
+                if (statusEl) statusEl.textContent = 'Informe o código.';
+                return;
+            }
+
+            if (statusEl) statusEl.textContent = 'Salvando...';
+
+            try {
+                const result = await resolverConta(protocolo_id, cnpj, conta_cliente, conta_contabilidade, tipo);
+                if (result.sucesso) {
+                    if (inputEl) inputEl.disabled = true;
+                    if (statusEl) {
+                        statusEl.textContent = result.reprocessando
+                            ? 'Mapeado! Reprocessando...'
+                            : 'Mapeado!';
+                        statusEl.className = 'text-xs text-green-600 font-semibold';
+                    }
+                    if (result.reprocessando) {
+                        setTimeout(() => loadPendencias(), 2000);
+                    }
+                } else {
+                    if (statusEl) statusEl.textContent = 'Erro ao salvar.';
+                }
+            } catch (err) {
+                if (statusEl) statusEl.textContent = 'Falha de conexão.';
             }
         }
 

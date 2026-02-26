@@ -20,8 +20,9 @@ async def seed():
                 col_data="E",
                 col_valor="L",
                 col_historico="O",
+                col_cod_historico="N",
                 col_conta_debito="G",
-                col_conta_credito="H"
+                col_conta_credito="H",
             )
             session.add(layout)
             await session.commit()
