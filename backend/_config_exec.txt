@@ -1,0 +1,21 @@
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+Write-Host "--- Iniciando Ambiente Contábil Sorriso ---" -ForegroundColor Cyan
+
+# 1. Instalação correta das dependências
+Write-Host "Instalando dependências via Pip..." -ForegroundColor Yellow
+python -m pip install --upgrade pip
+pip install .
+
+# 2. Ajuste de PYTHONPATH (Para evitar erros de import devido à estrutura app/app)
+# Isso garante que o Python encontre o módulo 'app' corretamente
+$env:PYTHONPATH = "C:\App\python\extract-accounting-excel\backend"
+
+# 3. Executar o Seed
+Write-Host "Populando banco de dados..." -ForegroundColor Yellow
+python app/seed.py
+
+# 4. Iniciar o servidor
+Write-Host "Servidor rodando em http://localhost:8111" -ForegroundColor Green
+uvicorn app.main:app --host 0.0.0.0 --port 8111 --reload

@@ -1,0 +1,14 @@
+[project]
+name = "extract-accounting-excel"
+version = "0.1.0"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic[email]>=2.0",
+    "pydantic-settings",
+    "sqlmodel",
+    "aiosqlite",
+    "python-calamine",
+    "python-multipart",
+    "fastapi-mail"
+]

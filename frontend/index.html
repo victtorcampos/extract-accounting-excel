@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contabilidade Sorriso - Extrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .page { display: none; }
+        .page.active { display: block; }
+        .loader { border-top-color: #3498db; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-5xl mx-auto py-10 px-4">
+        <nav class="flex space-x-4 mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <button onclick="showPage('pagina_1')" class="px-4 py-2 hover:bg-blue-50 text-blue-700 font-medium rounded transition">P1: Enviar Arquivo</button>
+            <button onclick="loadPendencias()" class="px-4 py-2 hover:bg-orange-50 text-orange-700 font-medium rounded transition">P2: Pendências</button>
+            <button onclick="showPage('pagina_3')" class="px-4 py-2 hover:bg-green-50 text-green-700 font-medium rounded transition">P3: Lista de Processos</button>
+        </nav>
+
+        <div id="content">
+            <div id="pagina_1" class="page active bg-white p-8 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Lançamento de Lote Contábil</h2>
+                <form id="formLote" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">CNPJ da Empresa</label>
+                        <input type="text" id="cnpj" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="00000000000000" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">E-mail Destinatário</label>
+                        <input type="email" id="email" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="contabil@empresa.com" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Código Matriz</label>
+                        <input type="number" id="matriz" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Código Filial (Opcional)</label>
+                        <input type="number" id="filial" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Período</label>
+                        <input type="month" id="periodo" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Layout</label>
+                        <select id="layout" class="w-full border p-2 rounded bg-gray-50">
+                            <option value="layout_brastelha_1">layout_brastelha_1</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Arquivo Excel (Máx 10MB)</label>
+                        <input type="file" id="arquivo" accept=".xls,.xlsx" class="w-full border p-2 rounded bg-gray-50 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
+                    </div>
+                    <button type="submit" id="btnEnviar" class="md:col-span-2 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold transition shadow-lg">
+                        ENVIAR PARA PROCESSAMENTO
+                    </button>
+                </form>
+            </div>
+
+            <div id="pagina_2" class="page bg-white p-8 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold mb-4 text-orange-800 border-b pb-2">Pendências de Mapeamento</h2>
+                <p class="mb-6 text-sm text-gray-600">Associe as contas encontradas no Excel às contas do seu plano contábil.</p>
+                <div id="containerPendencias" class="space-y-6">
+                    <div class="text-center py-10 text-gray-400 italic">Carregando pendências...</div>
+                </div>
+            </div>
+
+            <div id="pagina_3" class="page bg-white p-8 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold mb-6 text-green-800 border-b pb-2">Consulta de Processos</h2>
+                <div class="flex flex-wrap gap-4 mb-8 bg-gray-50 p-4 rounded-lg">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Buscar por CNPJ</label>
+                        <input type="text" id="buscaCnpj" placeholder="Digite o CNPJ" class="w-full border p-2 rounded">
+                    </div>
+                    <button onclick="buscarProtocolos()" class="self-end bg-gray-800 text-white px-6 py-2 rounded hover:bg-black transition font-medium">Pesquisar</button>
+                </div>
+                <div id="resultadoBusca" class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
+                                <th class="p-3 border-b">Protocolo</th>
+                                <th class="p-3 border-b">Data</th>
+                                <th class="p-3 border-b">Status</th>
+                                <th class="p-3 border-b">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaBusca"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = ""; // Caminho relativo pois o front está embutido no back
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        async function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // --- LÓGICA PÁGINA 1: ENVIO ---
+        document.getElementById('formLote').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnEnviar');
+            const file = document.getElementById('arquivo').files[0];
+            
+            if (file.size > 10 * 1024 * 1024) return alert("Erro: Arquivo excede 10MB.");
+
+            btn.disabled = true;
+            btn.innerText = "PROCESSANDO...";
+            btn.classList.add('opacity-50');
+
+            try {
+                const base64 = await toBase64(file);
+                const data = {
+                    protocolo: Math.floor(Date.now() / 1000).toString(),
+                    cnpj: document.getElementById('cnpj').value,
+                    codigo_matriz: parseInt(document.getElementById('matriz').value),
+                    codigo_filial: parseInt(document.getElementById('filial').value) || null,
+                    periodo: document.getElementById('periodo').value,
+                    email_destinatario: document.getElementById('email').value,
+                    layout_nome: document.getElementById('layout').value,
+                    arquivo_base64: base64
+                };
+
+                const res = await fetch(`${API_URL}/lancamento_lote_contabil`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await res.json();
+                if (result.sucesso) {
+                    alert(`Protocolo gerado: ${result.protocolo}`);
+                    showPage('pagina_3');
+                    buscarProtocolos();
+                } else {
+                    alert("Erro no servidor: " + result.detail);
+                }
+            } catch (err) {
+                alert("Falha de conexão com o servidor.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "ENVIAR PARA PROCESSAMENTO";
+                btn.classList.remove('opacity-50');
+            }
+        };
+
+        // --- LÓGICA PÁGINA 2: PENDÊNCIAS ---
+        async function loadPendencias() {
+            showPage('pagina_2');
+            const container = document.getElementById('containerPendencias');
+            container.innerHTML = '<div class="text-center py-10">Buscando pendências no banco de dados...</div>';
+
+            try {
+                // Aqui chamaremos um endpoint que retorna protocolos com status WAITING_MAPPING
+                // Por enquanto, simularemos a interface baseada na estrutura do StagingEntry
+                const res = await fetch(`${API_URL}/lancamento_lote_contabil`); // Mock: precisa de filtro no back
+                const data = await res.json();
+                
+                // Exemplo de renderização dinâmica (Precisa implementar GET de pendências no back)
+                container.innerHTML = `
+                    <div class="bg-orange-50 border-l-4 border-orange-400 p-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-bold text-orange-800">Protocolo: 1712345678</p>
+                                <p class="text-sm">Conta encontrada no Excel: <span class="font-mono bg-white px-1">999.01-A</span></p>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" placeholder="Cód. Contabilidade" class="border p-2 rounded text-sm w-40">
+                                <button class="bg-orange-600 text-white px-4 py-2 rounded text-sm hover:bg-orange-700 transition">Mapear</button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 text-center">Implemente o endpoint GET /pendencias no backend para listar dados reais aqui.</p>
+                `;
+            } catch (err) {
+                container.innerHTML = '<div class="text-red-500 text-center">Erro ao carregar pendências.</div>';
+            }
+        }
+
+        // --- LÓGICA PÁGINA 3: LISTA/BUSCA ---
+        async function buscarProtocolos() {
+            const cnpj = document.getElementById('buscaCnpj').value;
+            const corpo = document.getElementById('corpoTabelaBusca');
+            corpo.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Pesquisando...</td></tr>';
+
+            try {
+                const res = await fetch(`${API_URL}/lancamento_lote_contabil?cnpj=${cnpj}`);
+                const data = await res.json();
+                
+                corpo.innerHTML = '';
+                if (data.protocolos && data.protocolos.length > 0) {
+                    data.protocolos.forEach(p => {
+                        const statusColor = p.status === 'COMPLETED' ? 'text-green-600' : (p.status === 'ERROR' ? 'text-red-600' : 'text-orange-600');
+                        corpo.innerHTML += `
+                            <tr class="hover:bg-gray-50 transition border-b">
+                                <td class="p-3 font-mono text-sm">${p.protocolo}</td>
+                                <td class="p-3 text-sm text-gray-500">${new Date(p.data).toLocaleDateString()}</td>
+                                <td class="p-3 text-sm font-bold ${statusColor}">${p.status}</td>
+                                <td class="p-3">
+                                    ${p.status === 'COMPLETED' ? `<button onclick="downloadTxt('${p.protocolo}')" class="text-blue-600 hover:underline text-sm font-medium">Download TXT</button>` : '<span class="text-gray-300 text-xs">Indisponível</span>'}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    corpo.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">Nenhum protocolo encontrado para este CNPJ.</td></tr>';
+                }
+            } catch (err) {
+                corpo.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-red-500">Erro na consulta.</td></tr>';
+            }
+        }
+
+        async function downloadTxt(protocolo) {
+            const res = await fetch(`${API_URL}/lancamento_lote_contabil?protocolo=${protocolo}`);
+            const data = await res.json();
+            if (data.sucesso && data.resultado !== "pendente") {
+                const link = document.createElement("a");
+                link.href = "data:text/plain;base64," + data.resultado;
+                link.download = `LOTE_${protocolo}.txt`;
+                link.click();
+            }
+        }
+    </script>
+</body>
+</html>
