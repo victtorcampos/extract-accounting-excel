@@ -29,6 +29,7 @@ class Protocolo(SQLModel, table=True):
     arquivo_base64_raw: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     error_message: Optional[str] = Field(default=None, max_length=1000)
+    lote_inicial: Optional[int] = Field(default=None)  # ✅ ADICIONAR ESTA LINHA
     entries: Mapped[list["StagingEntry"]] = Relationship(
         sa_relationship=relationship(back_populates="protocolo")
     )

@@ -18,7 +18,7 @@ $ignoreDirectories = @(
     'target',
     'build',
     '.gradle',
-    'backup_','__pycache__', '.venv'
+    'backup_','__pycache__', '.venv', 'extract_accounting_excel.egg-info'
 )
 
 $ignoreFileNames = @(
