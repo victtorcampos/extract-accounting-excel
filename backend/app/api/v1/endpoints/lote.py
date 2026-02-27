@@ -122,7 +122,7 @@ async def listar_pendencias(db: SessionDep) -> dict:
     """
     Lista todos os StagingEntry de protocolos com status WAITING_MAPPING,
     agrupados por protocolo. Usado pela Página 2.
-    """
+    """ 
     stmt = select(Protocolo).where(Protocolo.status == "WAITING_MAPPING")
     result = await db.execute(stmt)
     protocolos = result.scalars().all()
@@ -153,6 +153,47 @@ async def listar_pendencias(db: SessionDep) -> dict:
 
     return {"sucesso": True, "pendencias": pendencias_list}
 
+@router.delete("/lancamento_lote_contabil/{protocolo_id}")
+async def delete_protocolo(
+    protocolo_id: Annotated[int, Path(gt=0, description="ID do protocolo a ser excluído")],
+    db: SessionDep,
+) -> dict:
+    """
+    Exclui um protocolo e seus StagingEntry associados (cascade).
+    
+    Retorna erro 404 se protocolo não existir.
+    Retorna erro 409 se protocolo estiver em processamento (PENDING).
+    """
+    # 1. Buscar protocolo
+    stmt = select(Protocolo).where(Protocolo.id == protocolo_id)
+    protocolo = (await db.execute(stmt)).scalar_one_or_none()
+    
+    if not protocolo:
+        raise HTTPException(status_code=404, detail="Protocolo não encontrado.")
+    
+    # 2. Validação de segurança: impedir exclusão durante processamento
+    if protocolo.status == "PENDING":
+        raise HTTPException(
+            status_code=409,
+            detail="Protocolo em processamento. Aguarde finalização antes de excluir."
+        )
+    
+    # 3. Deletar StagingEntry manualmente (SQLite não tem CASCADE automático via FK)
+    stmt_entries = select(StagingEntry).where(StagingEntry.protocolo_id == protocolo_id)
+    entries = (await db.execute(stmt_entries)).scalars().all()
+    
+    for entry in entries:
+        await db.delete(entry)
+    
+    # 4. Deletar protocolo
+    await db.delete(protocolo)
+    await db.commit()
+    
+    return {
+        "sucesso": True,
+        "mensagem": f"Protocolo {protocolo.numero_protocolo} excluído com sucesso.",
+        "entries_deletados": len(entries)
+    }
 
 @router.post("/pendencias/resolver")
 async def resolver_pendencia(

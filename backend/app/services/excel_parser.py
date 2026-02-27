@@ -52,6 +52,36 @@ def _format_valor_br(valor: float) -> str:
     formatted = f"{valor:,.2f}"
     return formatted.replace(",", "X").replace(".", ",").replace("X", ".")
 
+def format_with_decimal(valor: float, decimals: int = 2, grouping: bool = True) -> str:
+    """
+    Formata número no padrão brasileiro com casas decimais customizáveis.
+    
+    Args:
+        valor: Número a ser formatado
+        decimals: Quantidade de casas decimais (padrão: 2)
+        grouping: Se True, adiciona separador de milhar (padrão: True)
+    
+    Returns:
+        String formatada no padrão brasileiro
+        
+    Exemplos:
+        >>> format_with_decimal(60000.0, decimals=2)
+        '60.000,00'
+        >>> format_with_decimal(1234.56789, decimals=4)
+        '1.234,5679'
+        >>> format_with_decimal(12345, decimals=2, grouping=False)
+        '12345,00'
+        >>> format_with_decimal(0.1234, decimals=3)
+        '0,123'
+    """
+    # Formata com precisão especificada usando f-string
+    formatted = f"{valor:,.{decimals}f}" if grouping else f"{valor:.{decimals}f}"
+    
+    # Converte para padrão brasileiro: troca separadores
+    # Passo 1: , (milhar inglês) → X (placeholder)
+    # Passo 2: . (decimal inglês) → , (decimal BR)
+    # Passo 3: X → . (milhar BR)
+    return formatted.replace(",", "X").replace(".", ",").replace("X", ".")
 
 async def _get_conta_contabil(
     raw_acc: str,
@@ -123,9 +153,10 @@ async def processar_excel_service(
                 data_val = _format_date(row[idx_data], row[idx_dia])
                 valor_raw = str(row[idx_valor]).replace(",", ".")
                 valor_float = float(valor_raw)
-                valor_br = _format_valor_br(valor_float)
-                conta_d_raw = str(row[idx_debito]).strip()
-                conta_c_raw = str(row[idx_credito]).strip()
+                valor_br = format_with_decimal(valor_float, decimals=2, grouping=False)
+                print(valor_br)
+                conta_d_raw = _normalize_account(row[idx_debito])
+                conta_c_raw = _normalize_account(row[idx_credito])
                 cod_hist_val = str(row[idx_cod_hist] if len(row) > idx_cod_hist else "")
                 hist_val = str(row[idx_hist] if len(row) > idx_hist else "")
             except (ValueError, IndexError, TypeError):
@@ -149,7 +180,8 @@ async def processar_excel_service(
                 ))
             else:
                 n_filial = str(protocolo.codigo_filial or "")
-                linha = f"|6100|{data_val}|{c_debito}|{c_credito}|{valor_br}|{cod_hist_val}|{hist_val}||{n_filial}||"
+                linha = f"|6100|{data_val}|{c_debito}|{c_credito}|{valor_br}||{hist_val}|VICTOR|{n_filial}||"
+                # linha = f"|6100|{data_val}|{c_debito}|{c_credito}|{valor_br}|{cod_hist_val}|{hist_val}|VICTOR|{n_filial}||"
                 linhas_txt.extend(["|6000|X||||", linha])
 
         # Finalizar
@@ -176,3 +208,23 @@ async def processar_excel_service(
                 await db.commit()
         except:
             pass
+
+def _normalize_account(value: Any) -> str:
+    """Converte valor de conta para string sem .0 se for numérico inteiro."""
+    if isinstance(value, (int, float)):
+        # Se for float sem parte decimal (3145.0 → 3145), converte pra int
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value)
+    # Se já for string ou outro tipo, retorna como string limpa
+    return str(value).strip()
+
+def _normalize_account(value: Any) -> str:
+    """Converte valor de conta para string sem .0 se for numérico inteiro."""
+    if isinstance(value, (int, float)):
+        # Se for float sem parte decimal (3145.0 → 3145), converte pra int
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value)
+    # Se já for string ou outro tipo, retorna como string limpa
+    return str(value).strip()
