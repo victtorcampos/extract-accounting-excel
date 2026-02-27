@@ -209,3 +209,5 @@ __marimo__/
 /backup_
 data/database.db-shm
 data/database.db-wal
+/.claude
+/frontend/node_modules
