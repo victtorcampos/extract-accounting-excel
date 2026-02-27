@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from app.database import init_db
-from app.api.v1.endpoints import lote
+from app.api.v1.endpoints import lote, pendencia
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 FRONTEND_PATH = BASE_DIR / "frontend" / "index.html"
@@ -32,4 +32,5 @@ async def serve_frontend():
     return FileResponse(FRONTEND_PATH)
 
 app.include_router(lote.router, tags=["Lançamentos"])
+app.include_router(pendencia.router, tags=["Pendências"])
 # app.mount("/static", StaticFiles(directory=BASE_DIR / "frontend"), name="static")

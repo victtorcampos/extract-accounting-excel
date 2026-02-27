@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import select
 
 from app.database import engine, init_db
-from app.models.database_models import LayoutExcel
+from app.models.layout_excel import LayoutExcel
 
 
 async def seed() -> None:

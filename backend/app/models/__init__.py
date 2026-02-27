@@ -1,4 +1,3 @@
-# Compatibilidade retroativa — importar do novo local
 from app.models.protocolo import Protocolo
 from app.models.staging_entry import StagingEntry
 from app.models.account_mapping import AccountMapping
