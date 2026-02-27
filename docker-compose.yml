@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8111:8111"
+    volumes:
+      # Persiste o banco SQLite entre reinicializações
+      - ./data:/app/data
+    environment:
+      DATA_DIR: /app/data
+      FRONTEND_DIR: /app/frontend
+    restart: unless-stopped

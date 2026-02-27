@@ -1,0 +1,29 @@
+# Node
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Python
+backend/__pycache__
+backend/**/__pycache__
+backend/**/*.pyc
+backend/*.egg-info
+backend/build
+backend/extract_accounting_excel.egg-info
+backend/_config_exec.txt
+
+# Dados locais
+data/
+
+# Git / IDE
+.git
+.gitignore
+*.md
+doc/
+excel/
+backup_
+*.ps1
+
+# Dev
+.env
+.env.*

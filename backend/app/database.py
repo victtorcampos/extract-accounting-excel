@@ -5,13 +5,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 from sqlmodel import SQLModel
 
-# 1. Localiza a raiz do projeto de forma absoluta
-BASE_DIR = (
-    Path(__file__).resolve().parent.parent.parent
-)  # Sobe de app para backend para raiz
-DATA_DIR = BASE_DIR / "data"
-
-print(DATA_DIR)
+# DATA_DIR: env var para Docker (/app/data) ou fallback para raiz do projeto (dev)
+_dev_default = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = Path(os.environ.get("DATA_DIR") or _dev_default)
 
 # 2. Garante que a pasta 'data' existe (Cria se não existir)
 DATA_DIR.mkdir(parents=True, exist_ok=True)

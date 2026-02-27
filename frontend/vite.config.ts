@@ -11,8 +11,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/lancamento_lote_contabil": "http://localhost:8111",
-      "/pendencias": "http://localhost:8111",
+      // Proxy todas as chamadas /api/* para o backend FastAPI em dev
+      "/api": "http://localhost:8111",
     },
   },
 });
