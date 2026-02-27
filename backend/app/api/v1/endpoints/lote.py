@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -153,21 +153,21 @@ async def listar_pendencias(db: SessionDep) -> dict:
 
     return {"sucesso": True, "pendencias": pendencias_list}
 
-@router.delete("/lancamento_lote_contabil/{protocolo_id}")
+@router.delete("/lancamento_lote_contabil/{numero_protocolo}")
 async def delete_protocolo(
-    protocolo_id: Annotated[int, Path(gt=0, description="ID do protocolo a ser excluído")],
+    numero_protocolo: Annotated[int, Path(gt=0, description="ID interno do protocolo (auto-increment)")],
     db: SessionDep,
 ) -> dict:
     """
     Exclui um protocolo e seus StagingEntry associados (cascade).
-    
     Retorna erro 404 se protocolo não existir.
     Retorna erro 409 se protocolo estiver em processamento (PENDING).
     """
     # 1. Buscar protocolo
-    stmt = select(Protocolo).where(Protocolo.id == protocolo_id)
-    protocolo = (await db.execute(stmt)).scalar_one_or_none()
+    stmt = select(Protocolo).where(Protocolo.numero_protocolo == numero_protocolo)
     
+    protocolo : Protocolo = (await db.execute(stmt)).scalar_one_or_none()
+        
     if not protocolo:
         raise HTTPException(status_code=404, detail="Protocolo não encontrado.")
     
@@ -179,7 +179,7 @@ async def delete_protocolo(
         )
     
     # 3. Deletar StagingEntry manualmente (SQLite não tem CASCADE automático via FK)
-    stmt_entries = select(StagingEntry).where(StagingEntry.protocolo_id == protocolo_id)
+    stmt_entries = select(StagingEntry).where(StagingEntry.protocolo_id == numero_protocolo)
     entries = (await db.execute(stmt_entries)).scalars().all()
     
     for entry in entries:

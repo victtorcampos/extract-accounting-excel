@@ -154,7 +154,6 @@ async def processar_excel_service(
                 valor_raw = str(row[idx_valor]).replace(",", ".")
                 valor_float = float(valor_raw)
                 valor_br = format_with_decimal(valor_float, decimals=2, grouping=False)
-                print(valor_br)
                 conta_d_raw = _normalize_account(row[idx_debito])
                 conta_c_raw = _normalize_account(row[idx_credito])
                 cod_hist_val = str(row[idx_cod_hist] if len(row) > idx_cod_hist else "")
