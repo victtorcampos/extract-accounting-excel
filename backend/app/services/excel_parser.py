@@ -125,6 +125,12 @@ async def processar_excel_service(
         protocolo = (await db.execute(stmt_prot)).scalar_one()
         cnpj_protocolo = protocolo.cnpj
         
+        try:
+            periodo_esperado = _parse_periodo(protocolo.periodo)
+        except ValueError as e:
+            # Período inválido no banco (ex: "ABC" em vez de "2026-01")
+            raise ValueError(f"Período do protocolo inválido: {e}")
+        
         # 3. ✅ CORREÇÃO: Base64 → BytesIO → Workbook
         raw_b64 = arquivo_base64.split(",")[-1] if "," in arquivo_base64 else arquivo_base64
         file_bytes = base64.b64decode(raw_b64)
@@ -144,6 +150,9 @@ async def processar_excel_service(
         linhas_txt: list[str] = []
         pendencias: list[StagingEntry] = []
 
+        # ✅ ACUMULADOR DE ERROS DE PERÍODO
+        erros_periodo: list[tuple[int, str]] = []  # (numero_linha, data_encontrada)
+        
         rows = list(sheet.to_python())
         for row in rows[1:]:  # Pula header
             if not row or len(row) <= max(idx_data, idx_dia, idx_debito, idx_credito, idx_valor):
@@ -152,7 +161,10 @@ async def processar_excel_service(
             try:
                 
                 data_val = _format_date(row[idx_data], row[idx_dia])
-
+                if not _validate_data_lancamento(data_val, periodo_esperado):
+                    erros_periodo.append((row, data_val))
+                    continue  # Pula linha inválida, acumula erro
+                
                 valor_raw = str(row[idx_valor]).replace(",", ".")
                 valor_float = float(valor_raw)
                 valor_br = format_with_decimal(valor_float, decimals=2, grouping=False)
@@ -184,7 +196,18 @@ async def processar_excel_service(
                 linha = f"|6100|{data_val}|{c_debito}|{c_credito}|{valor_br}||{hist_val}|VICTOR|{n_filial}||"
                 # linha = f"|6100|{data_val}|{c_debito}|{c_credito}|{valor_br}|{cod_hist_val}|{hist_val}|VICTOR|{n_filial}||"
                 linhas_txt.extend(["|6000|X||||", linha])
-
+         # ✅ FALHA TOTAL SE HOUVER ERROS DE PERÍODO
+        if erros_periodo:
+            ano_esp, mes_esp = periodo_esperado
+            periodo_fmt = f"{mes_esp:02d}/{ano_esp}"
+            
+            detalhes = ", ".join([f"Linha {l}: {d}" for l, d in erros_periodo[:5]])  # Máx 5
+            sufixo = f" (+{len(erros_periodo)-5} mais)" if len(erros_periodo) > 5 else ""
+            
+            raise ValueError(
+                f"Arquivo contém {len(erros_periodo)} lançamento(s) fora do período {periodo_fmt}. "
+                f"Exemplos: {detalhes}{sufixo}"
+            )
         # Finalizar
         if pendencias:
             db.add_all(pendencias)
@@ -206,6 +229,7 @@ async def processar_excel_service(
             proto_err = (await db.execute(stmt_err)).scalar_one_or_none()
             if proto_err:
                 proto_err.status = "ERROR"
+                proto_err.error_message = str(e)[:1000]
                 await db.commit()
         except:
             pass

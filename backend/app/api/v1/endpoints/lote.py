@@ -100,6 +100,7 @@ async def consultar_lote(
             "protocolo": p.numero_protocolo,
             "status": p.status,
             "resultado": conteudo,
+            "error_message": p.error_message if p.status == "ERROR" else None  # ✅ Incluir mensagem de erro se status for ERROR
         }
 
     if cnpj:
@@ -109,7 +110,7 @@ async def consultar_lote(
         return {
             "sucesso": True,
             "protocolos": [
-                {"protocolo": p.numero_protocolo, "status": p.status, "data": p.created_at}
+                {"protocolo": p.numero_protocolo, "status": p.status, "data": p.created_at, "error_message": p.error_message if p.status == "ERROR" else None}
                 for p in protocolos
             ],
         }
