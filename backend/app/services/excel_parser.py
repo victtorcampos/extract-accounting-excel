@@ -124,7 +124,7 @@ async def processar_excel_service(
         stmt_prot = select(Protocolo).where(Protocolo.id == protocolo_id)
         protocolo = (await db.execute(stmt_prot)).scalar_one()
         cnpj_protocolo = protocolo.cnpj
-
+        
         # 3. ✅ CORREÇÃO: Base64 → BytesIO → Workbook
         raw_b64 = arquivo_base64.split(",")[-1] if "," in arquivo_base64 else arquivo_base64
         file_bytes = base64.b64decode(raw_b64)
@@ -150,7 +150,9 @@ async def processar_excel_service(
                 continue
 
             try:
+                
                 data_val = _format_date(row[idx_data], row[idx_dia])
+
                 valor_raw = str(row[idx_valor]).replace(",", ".")
                 valor_float = float(valor_raw)
                 valor_br = format_with_decimal(valor_float, decimals=2, grouping=False)
@@ -227,3 +229,62 @@ def _normalize_account(value: Any) -> str:
         return str(value)
     # Se já for string ou outro tipo, retorna como string limpa
     return str(value).strip()
+
+def _parse_periodo(periodo_str: str) -> tuple[int, int]:
+    """
+    Converte string YYYY-MM em tupla (ano, mes).
+    
+    Args:
+        periodo_str: Período no formato YYYY-MM (ex: "2026-01")
+        
+    Returns:
+        Tupla (ano, mes)
+        
+    Raises:
+        ValueError: Se formato inválido
+        
+    Exemplo:
+        >>> _parse_periodo("2026-01")
+        (2026, 1)
+    """
+    try:
+        ano, mes = periodo_str.strip().split("-")
+        ano_int = int(ano)
+        mes_int = int(mes)
+        
+        if not (1 <= mes_int <= 12):
+            raise ValueError(f"Mês inválido: {mes_int}")
+        if not (2000 <= ano_int <= 2100):
+            raise ValueError(f"Ano fora do range: {ano_int}")
+            
+        return (ano_int, mes_int)
+    except (ValueError, AttributeError) as e:
+        raise ValueError(f"Período inválido '{periodo_str}'. Use formato YYYY-MM (ex: 2026-01)") from e
+
+def _validate_data_lancamento(data_str: str, periodo_esperado: tuple[int, int]) -> bool:
+    """
+    Valida se data do lançamento pertence ao período esperado.
+    
+    Args:
+        data_str: Data no formato DD/MM/YYYY
+        periodo_esperado: Tupla (ano, mes) esperado
+        
+    Returns:
+        True se data válida, False caso contrário
+        
+    Exemplo:
+        >>> _validate_data_lancamento("15/01/2026", (2026, 1))
+        True
+        >>> _validate_data_lancamento("15/02/2026", (2026, 1))
+        False
+    """
+    try:
+        # Converte DD/MM/YYYY → datetime
+        dt = datetime.strptime(data_str, "%d/%m/%Y")
+        ano_esperado, mes_esperado = periodo_esperado
+        
+        return dt.year == ano_esperado and dt.month == mes_esperado
+    except (ValueError, AttributeError):
+        # Se não consegue parsear, considera inválida
+        return False
+
