@@ -154,7 +154,7 @@ async def processar_excel_service(
         erros_periodo: list[tuple[int, str]] = []  # (numero_linha, data_encontrada)
         
         rows = list(sheet.to_python())
-        for row in rows[1:]:  # Pula header
+        for idx, row in enumerate(rows[1:], start=2):  # Pula header, começa em 2 (1-indexed)
             if not row or len(row) <= max(idx_data, idx_dia, idx_debito, idx_credito, idx_valor):
                 continue
 
@@ -162,7 +162,7 @@ async def processar_excel_service(
                 
                 data_val = _format_date(row[idx_data], row[idx_dia])
                 if not _validate_data_lancamento(data_val, periodo_esperado):
-                    erros_periodo.append((row, data_val))
+                    erros_periodo.append((idx, data_val))
                     continue  # Pula linha inválida, acumula erro
                 
                 valor_raw = str(row[idx_valor]).replace(",", ".")
@@ -233,16 +233,6 @@ async def processar_excel_service(
                 await db.commit()
         except:
             pass
-
-def _normalize_account(value: Any) -> str:
-    """Converte valor de conta para string sem .0 se for numérico inteiro."""
-    if isinstance(value, (int, float)):
-        # Se for float sem parte decimal (3145.0 → 3145), converte pra int
-        if isinstance(value, float) and value.is_integer():
-            return str(int(value))
-        return str(value)
-    # Se já for string ou outro tipo, retorna como string limpa
-    return str(value).strip()
 
 def _normalize_account(value: Any) -> str:
     """Converte valor de conta para string sem .0 se for numérico inteiro."""

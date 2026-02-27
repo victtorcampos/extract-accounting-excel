@@ -156,7 +156,7 @@ async def listar_pendencias(db: SessionDep) -> dict:
 
 @router.delete("/lancamento_lote_contabil/{numero_protocolo}")
 async def delete_protocolo(
-    numero_protocolo: Annotated[int, Path(gt=0, description="ID interno do protocolo (auto-increment)")],
+    numero_protocolo: Annotated[str, Path(description="Número do protocolo")],  # ✅ str, não int
     db: SessionDep,
 ) -> dict:
     """
@@ -180,7 +180,7 @@ async def delete_protocolo(
         )
     
     # 3. Deletar StagingEntry manualmente (SQLite não tem CASCADE automático via FK)
-    stmt_entries = select(StagingEntry).where(StagingEntry.protocolo_id == numero_protocolo)
+    stmt_entries = select(StagingEntry).where(StagingEntry.protocolo_id == protocolo.id)
     entries = (await db.execute(stmt_entries)).scalars().all()
     
     for entry in entries:
